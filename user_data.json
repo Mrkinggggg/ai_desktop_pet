@@ -1,0 +1,19 @@
+{
+    "user_id": 1,
+    "username": "张三",
+    "balance": 2819,
+    "purchase_history": [
+        {
+            "item_id": 101,
+            "item_name": "苹果",
+            "quantity": 3,
+            "total_price": 30
+        },
+        {
+            "item_id": 102,
+            "item_name": "橙子",
+            "quantity": 2,
+            "total_price": 20
+        }
+    ]
+}
