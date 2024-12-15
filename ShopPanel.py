@@ -4,18 +4,17 @@
 
 import sys
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
-    QPushButton, QListWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox, QDialog, QSlider, QGraphicsOpacityEffect,
-    QMessageBox
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGraphicsOpacityEffect
 )
 from PyQt5.QtGui import QPixmap, QGuiApplication, QIcon, QPalette, QColor, QPainter, QIntValidator
-from PyQt5.QtCore import (Qt, QSize, pyqtSignal, QEvent, right, QPropertyAnimation, QRect, QParallelAnimationGroup,
-    QEasingCurve
+from PyQt5.QtCore import (
+    Qt, QSize, pyqtSignal, QEvent, right, QPropertyAnimation, QRect, QParallelAnimationGroup,
+    QEasingCurve, QAbstractAnimation
 )
 from qfluentwidgets import (
-    ToolButton, FluentIcon, ProgressBar, LineEdit, AvatarWidget, PixmapLabel, BodyLabel, CaptionLabel,
-    InfoBar, InfoBarPosition, PushButton, ListWidget, ComboBox, SpinBox, LineEdit, CheckBox, ImageLabel, Slider, Flyout,
-    FlyoutView, SearchLineEdit, ElevatedCardWidget, CardWidget, FlyoutViewBase, FlyoutAnimationType, PrimaryPushButton
+    BodyLabel, PushButton, ListWidget, ComboBox, SpinBox, LineEdit, CheckBox, ImageLabel, Slider, Flyout,
+    FlyoutView, SearchLineEdit, ElevatedCardWidget, CardWidget, FlyoutViewBase, FlyoutAnimationType, PrimaryPushButton,
+    SwitchButton
 )
 import os
 import json
@@ -102,6 +101,53 @@ class ItemWidget(ElevatedCardWidget):
         self.buyClicked.emit(self.item)
 
 
+class SuccessBuyFlyoutView(FlyoutViewBase):
+
+    def __init__(self, parent_widget, window_width, window_height, item, value, parent=None):
+        super().__init__(parent)
+        total_price = int(item['price']) * value  # 计算总价
+        self.vBoxLayout = QVBoxLayout(self)
+        self.label = BodyLabel(f"成功购买 {value} 件 {item['name']}！\n花费: {total_price} 元\n剩余金币: {parent_widget.balance} 元")
+        self.button = PrimaryPushButton("关闭")
+
+        self.button.setFixedWidth(140)
+
+        self.vBoxLayout.setSpacing(12)
+        self.vBoxLayout.setContentsMargins(20, 16, 20, 16)
+        self.vBoxLayout.addWidget(self.label, alignment=Qt.AlignCenter)
+        self.vBoxLayout.addWidget(self.button, alignment=Qt.AlignCenter)
+        # # 弹窗显示购买成功
+        # success_message = QMessageBox(self)
+        # success_message.setWindowTitle("购买成功")
+        # success_message.setText(
+        #     f"成功购买 {value} 件 {item['name']}！\n花费: {total_price} 元\n剩余金币: {self.balance} 元")
+        # success_message.setIcon(QMessageBox.Information)
+        # success_message.exec_()
+
+
+class FailBuyFlyoutView(FlyoutViewBase):
+
+    def __init__(self, parent_widget, window_width, window_height, item, value, parent=None):
+        super().__init__(parent)
+        total_price = int(item['price']) * value  # 计算总价
+        self.vBoxLayout = QVBoxLayout(self)
+        self.label = BodyLabel(
+            f"金币不足！\n需要: {total_price} 元\n当前余额: {parent_widget.balance} 元")
+        self.button = PrimaryPushButton("关闭")
+
+        self.button.setFixedWidth(140)
+
+        self.vBoxLayout.setSpacing(12)
+        self.vBoxLayout.setContentsMargins(20, 16, 20, 16)
+        self.vBoxLayout.addWidget(self.label, alignment=Qt.AlignCenter)
+        self.vBoxLayout.addWidget(self.button, alignment=Qt.AlignCenter)
+        # failure_message = QMessageBox(self)
+        # failure_message.setWindowTitle("购买失败")
+        # failure_message.setText(f"金币不足！\n需要: {total_price} 元\n当前余额: {self.balance} 元")
+        # failure_message.setIcon(QMessageBox.Warning)
+        # failure_message.exec_()
+
+
 class SSpinBox(SpinBox):
     """自定义SpinBox类，实现按下键数字增大，按上键数字减小"""
     def stepUp(self):
@@ -146,35 +192,46 @@ class ShoppingApp(QWidget):
     def initUI(self):
         # 主布局
         main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         # 右侧分类和排序
         right_layout = QVBoxLayout()
+        right_layout.setContentsMargins(12, 24, 24, 24)
         self.category_list = ListWidget()
         self.category_list.setObjectName('list')
         self.category_list.addItems(["全部", "正餐", "零食", "饮料", "药品", "礼物", "道具"])
-        self.category_list.setFixedWidth(self.width() // 5)
+        self.category_list.setFixedWidth(self.width() // 4)
         self.category_list.setCurrentRow(0)  # 默认选择第一个“全部”
         self.category_list.currentTextChanged.connect(self.change_category)  # 连接分类改变事件
 
 
         self.sort_combobox = ComboBox()
-        self.sort_combobox.addItems(["按名字", "按价格", "按饱腹度", "按体力", "按心情"])
-        self.sort_combobox.setFixedWidth(self.width() // 5)
+        self.sort_combobox.addItems(["默认顺序", "按名字", "按价格", "按饱腹度", "按体力", "按心情"])
+        self.sort_combobox.setFixedWidth(self.width() // 4)
         self.sort_combobox.currentTextChanged.connect(self.sort_items)
 
         right_layout.addWidget(BodyLabel("商品分类"))
         right_layout.addWidget(self.category_list)
-        right_layout.addWidget(BodyLabel("排序方式"))
+        sort_layout = QHBoxLayout()
+        self.adbutton = SwitchButton()
+        self.adbutton.checkedChanged.connect(self.sort_items)
+        sort_layout.addWidget(BodyLabel("排序方式"))
+        sort_layout.addWidget(self.adbutton)
+        self.adbutton.setOffText("↑")
+        self.adbutton.setOnText("↓")
+        right_layout.addLayout(sort_layout)
         right_layout.addWidget(self.sort_combobox)
 
         # 左侧商品显示区域
+        left_out = QVBoxLayout()
+        left_out.setContentsMargins(12,12,12,12)
         left_layout = QVBoxLayout()
 
         # 顶部搜索栏
         top_layout = QHBoxLayout()
         self.search_bar = SearchLineEdit()
         self.search_bar.setPlaceholderText("搜索商品")
-        self.search_bar.setFixedHeight(30)
+        self.search_bar.setFixedHeight(self.window_height // 14)
         self.search_bar.setFixedWidth(self.width() // 2)  # 搜索栏宽度为窗口宽度的一半
         self.search_bar.searchSignal.connect(self.perform_search)
         top_layout.addWidget(self.search_bar)
@@ -182,8 +239,11 @@ class ShoppingApp(QWidget):
         # 添加金币图标和金币显示
         balance_layout = QHBoxLayout()
         self.balance_icon = ImageLabel()
-        self.balance_icon.setPixmap(QPixmap("picture_src/coin.png").scaled(35, 30, Qt.KeepAspectRatio))  # 加载金币图标
+        pic_length = self.window_height // 15
+        self.balance_icon.setPixmap(QPixmap("picture_src/coin.png").scaled \
+                                        (pic_length, pic_length, Qt.KeepAspectRatio))  # 加载金币图标
         self.balance_label = QLabel(f"金币:{self.balance:.2f}")
+        self.balance_label.setToolTip("为什么会有小数点？")
         balance_layout.addWidget(self.balance_icon)
         balance_layout.addWidget(self.balance_label)
         balance_layout.setAlignment(Qt.AlignRight)
@@ -200,6 +260,7 @@ class ShoppingApp(QWidget):
         # 创建居中的子布局
         center_layout = QHBoxLayout()
         self.page_selector = SSpinBox()
+        self.page_selector.setFocusPolicy(Qt.NoFocus)
         self.page_selector.setRange(1, self.total_pages)
         self.page_selector.setValue(self.current_page)
         self.page_selector.valueChanged.connect(self.change_page)
@@ -213,9 +274,15 @@ class ShoppingApp(QWidget):
         # 添加到父布局
         left_layout.addLayout(bottom_layout)
 
+        # 包裹右侧布局的容器
+        right_widget = QWidget()
+        right_widget.setLayout(right_layout)
+        right_widget.setStyleSheet("background-color: lightgray;")  # 设置淡灰色背景
+
         # 合并左右布局
-        main_layout.addLayout(left_layout)
-        main_layout.addLayout(right_layout)
+        left_out.addLayout(left_layout)
+        main_layout.addLayout(left_out)
+        main_layout.addWidget(right_widget)
 
     def update_balance(self):
         """更新金币值显示"""
@@ -225,7 +292,6 @@ class ShoppingApp(QWidget):
         """将用户数据保存回 JSON 文件"""
         with open("user_data.json", 'w', encoding='utf-8') as file:
             json.dump(self.user_data, file, ensure_ascii=False, indent=4)
-            print('111111')
 
     def perform_search(self):
         """根据搜索框的输入过滤商品"""
@@ -245,26 +311,41 @@ class ShoppingApp(QWidget):
         self.update_grid_layout()
 
     def sort_items(self):
-        """根据排序方式对商品进行排序"""
+        """根据排序方式和排序顺序对商品进行排序"""
         sort_option = self.sort_combobox.currentText()
+        is_descending = self.adbutton.isChecked()  # 检查是否选中降序
 
         if sort_option == "按名字":
             # 按拼音排序
-            self.filtered_items.sort(key=lambda item: "".join(lazy_pinyin(item["name"])))
+            self.filtered_items.sort(
+                key=lambda item: "".join(lazy_pinyin(item["name"])),
+                reverse=is_descending
+            )
         elif sort_option == "按价格":
-            self.filtered_items.sort(key=lambda item: float(item["price"]) if item["price"] else 0, reverse=True)
+            self.filtered_items.sort(
+                key=lambda item: float(item["price"]) if item["price"] else 0,
+                reverse=is_descending
+            )
         elif sort_option == "按饱腹度":
-            self.filtered_items.sort(key=lambda item: float(item["effect_je"]) if item["effect_je"] else 0, reverse=True)
+            self.filtered_items.sort(
+                key=lambda item: float(item["effect_je"]) if item["effect_je"] else 0,
+                reverse=is_descending
+            )
         elif sort_option == "按体力":
-            self.filtered_items.sort(key=lambda item: float(item["effect_tl"]) if item["effect_tl"] else 0, reverse=True)
+            self.filtered_items.sort(
+                key=lambda item: float(item["effect_tl"]) if item["effect_tl"] else 0,
+                reverse=is_descending
+            )
         elif sort_option == "按心情":
-            self.filtered_items.sort(key=lambda item: float(item["effect_xq"]) if item["effect_xq"] else 0,reverse=True)
+            self.filtered_items.sort(
+                key=lambda item: float(item["effect_xq"]) if item["effect_xq"] else 0,
+                reverse=is_descending
+            )
 
         # 更新当前页面为第一页，并刷新网格布局
         self.current_page = 1
         self.total_pages = (len(self.filtered_items) + self.items_per_page - 1) // self.items_per_page
-        # self.page_selector.setRange(1, self.total_pages)
-        self.page_selector.setRange(1,self.total_pages)
+        self.page_selector.setRange(1, self.total_pages)
         self.page_selector.setValue(self.current_page)
         self.update_grid_layout()
 
@@ -344,7 +425,7 @@ class ShoppingApp(QWidget):
 
         # 初始位置在窗口下方不可见区域
         initial_x = (self.window_width - details_width) // 2
-        initial_y = (self.window_height - details_height) / 1.8
+        initial_y = int((self.window_height - details_height) / 1.8)
         self.details_widget.setGeometry(initial_x, initial_y, details_width, details_height)
 
         # 目标位置为窗口居中位置
@@ -408,18 +489,35 @@ class ShoppingApp(QWidget):
         QApplication.instance().installEventFilter(self)
 
     def close_details(self):
-        """关闭详情页面"""
+        """关闭详情页面，并添加逐渐变透明的动画效果"""
         if self.details_widget:
-            self.details_widget.deleteLater()
-            self.details_widget = None
+            # 获取当前透明效果
+            opacity_effect = self.details_widget.graphicsEffect()
 
-            # # 动态获取当前有效组件
-            # for component in self.components:
-            #     component.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-            # self.components = []
+            if not isinstance(opacity_effect, QGraphicsOpacityEffect):
+                # 如果没有设置透明效果，重新设置
+                opacity_effect = QGraphicsOpacityEffect(self.details_widget)
+                self.details_widget.setGraphicsEffect(opacity_effect)
 
-            # 卸载事件过滤器
-            QApplication.instance().removeEventFilter(self)
+            animation_group = QParallelAnimationGroup(self)
+
+            # 创建透明度动画
+            opacity_animation = QPropertyAnimation(opacity_effect, b"opacity")
+            opacity_animation.setDuration(150)  # 动画持续时间（毫秒）
+            opacity_animation.setStartValue(1.0)  # 初始透明度为完全不透明
+            opacity_animation.setEndValue(0.0)  # 最终透明度为完全透明
+
+            animation_group.addAnimation(opacity_animation)
+
+            # 动画结束后销毁组件
+            def on_animation_finished():
+                self.details_widget.deleteLater()
+                self.details_widget = None
+                # 卸载事件过滤器
+                QApplication.instance().removeEventFilter(self)
+
+            opacity_animation.finished.connect(on_animation_finished)
+            animation_group.start()
 
     def eventFilter(self, obj, event):
         """事件过滤器：点击详情页外区域关闭详情页面"""
@@ -443,9 +541,9 @@ class ShoppingApp(QWidget):
             self.close_details()
 
         self.details_widget = QWidget(self)
-        self.details_widget.setObjectName("purchase_widget")
+        self.details_widget.setObjectName("detail_widget")
         self.details_widget.setStyleSheet("""
-                QWidget#purchase_widget {
+                QWidget#detail_widget {
                     background-color: rgba(255, 255, 255, 0.95); /* 半透明白色 */
                     border: 2px solid #cccccc;                 /* 灰色边框 */
                     border-radius: 15px;                      /* 圆角边框 */
@@ -458,7 +556,7 @@ class ShoppingApp(QWidget):
 
         # 初始位置在窗口下方不可见区域
         initial_x = (self.window_width - details_width) // 2
-        initial_y = (self.window_height - details_height) / 1.8
+        initial_y = int((self.window_height - details_height) / 1.8)
         self.details_widget.setGeometry(initial_x, initial_y, details_width, details_height)
 
         # 目标位置为窗口居中位置
@@ -519,9 +617,9 @@ class ShoppingApp(QWidget):
 
         # 添加确认和取消按钮
         cc_layout = QHBoxLayout()
-        confirm_button = QPushButton("确认购买")
+        confirm_button = PushButton("确认购买")
         confirm_button.clicked.connect(lambda: self.confirm_purchase(item, slider.value()))  # 将数量传递给确认函数
-        cancel_button = QPushButton("取消")
+        cancel_button = PushButton("取消")
         cancel_button.clicked.connect(self.close_details)
         cc_layout.addWidget(confirm_button)
         cc_layout.addWidget(cancel_button)
@@ -571,25 +669,35 @@ class ShoppingApp(QWidget):
             self.balance -= total_price  # 扣除金额
             self.update_balance()
             self.user_data["balance"] = self.balance
+
+            stuff = item["name"]
+            default_quantity = 0  # 当键不存在时赋予的默认值
+            # 检查并添加新键
+            if stuff not in self.user_data["bag"]:
+                self.user_data["bag"][stuff] = default_quantity
+
+            self.user_data["bag"][stuff] += value
+
+            new_record = {
+                "item_name": stuff,
+                "quantity": value,
+                "total_price": total_price
+            }
+
+            self.user_data["purchase_history"].append(new_record)
+
             self.save_user_data()
-            # 弹窗显示购买成功
-            success_message = QMessageBox(self)
-            success_message.setWindowTitle("购买成功")
-            success_message.setText(
-                f"成功购买 {value} 件 {item['name']}！\n花费: {total_price} 元\n剩余金币: {self.balance} 元")
-            success_message.setIcon(QMessageBox.Information)
-            success_message.exec_()
+            Flyout.make(SuccessBuyFlyoutView(self, self.window_width, self.window_height, item, value),
+                        self.details_widget, self.details_widget, aniType=FlyoutAnimationType.PULL_UP)
 
         else:
             # 钱包余额不足
-            failure_message = QMessageBox(self)
-            failure_message.setWindowTitle("购买失败")
-            failure_message.setText(f"金币不足！\n需要: {total_price} 元\n当前余额: {self.balance} 元")
-            failure_message.setIcon(QMessageBox.Warning)
-            failure_message.exec_()
+            Flyout.make(FailBuyFlyoutView(self, self.window_width, self.window_height, item, value),
+                        self.details_widget, self.details_widget, aniType=FlyoutAnimationType.PULL_UP)
 
 
 if __name__ == "__main__":
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     window = ShoppingApp()
     window.show()
