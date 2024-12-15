@@ -1,19 +1,24 @@
 {
-    "user_id": 1,
-    "username": "张三",
-    "balance": 2819,
+    "user_id": 10086,
+    "username": "牜膜",
+    "balance": 99499,
+    "bag": {
+        "疯狂星期四套餐": 0,
+        "芒果糯米饭": 0,
+        "拉面": 28,
+        "薯片": 1,
+        "不死图腾": 1
+    },
     "purchase_history": [
         {
-            "item_id": 101,
-            "item_name": "苹果",
-            "quantity": 3,
-            "total_price": 30
+            "item_name": "拉面",
+            "quantity": 13,
+            "total_price": 260
         },
         {
-            "item_id": 102,
-            "item_name": "橙子",
-            "quantity": 2,
-            "total_price": 20
+            "item_name": "不死图腾",
+            "quantity": 1,
+            "total_price": 500
         }
     ]
 }
