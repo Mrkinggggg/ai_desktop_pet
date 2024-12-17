@@ -1,5 +1,6 @@
 [
     {
+        "id": 1,
         "name": "疯狂星期四套餐",
         "price": "50",
         "image": "picture_src/demo.png",
@@ -12,6 +13,7 @@
         "effect_tl": "50"
     },
     {
+        "id": 2,
         "name": "芒果糯米饭",
         "price": "20",
         "image": "demo.png",
@@ -24,6 +26,7 @@
         "effect_tl": ""
     },
     {
+        "id": 3,
         "name": "拉面",
         "price": "20",
         "image": "demo.png",
@@ -36,6 +39,7 @@
         "effect_tl": ""
     },
     {
+        "id": 4,
         "name": "蛋炒饭",
         "price": "10",
         "image": "demo.png",
@@ -48,6 +52,7 @@
         "effect_tl": ""
     },
     {
+        "id": 5,
         "name": "方便面",
         "price": "5",
         "image": "demo.png",
@@ -60,6 +65,7 @@
         "effect_tl": ""
     },
     {
+        "id": 6,
         "name": "薯片",
         "price": "5",
         "image": "demo.png",
@@ -72,6 +78,7 @@
         "effect_tl": ""
     },
     {
+        "id": 7,
         "name": "沙拉",
         "price": "20",
         "image": "demo.png",
@@ -84,6 +91,7 @@
         "effect_tl": ""
     },
     {
+        "id": 8,
         "name": "可乐",
         "price": "3",
         "image": "demo.png",
@@ -96,6 +104,7 @@
         "effect_tl": ""
     },
     {
+        "id": 9,
         "name": "牛奶",
         "price": "5",
         "image": "demo.png",
@@ -108,6 +117,7 @@
         "effect_tl": ""
     },
     {
+        "id": 10,
         "name": "炸鸡",
         "price": "15",
         "image": "demo.png",
@@ -120,6 +130,7 @@
         "effect_tl": ""
     },
     {
+        "id": 11,
         "name": "蓝色药丸（限量）",
         "price": "30",
         "image": "demo.png",
@@ -132,6 +143,7 @@
         "effect_tl": ""
     },
     {
+        "id": 12,
         "name": "红色药丸（限量）",
         "price": "30",
         "image": "demo.png",
@@ -144,6 +156,7 @@
         "effect_tl": ""
     },
     {
+        "id": 13,
         "name": "感冒药",
         "price": "50",
         "image": "demo.png",
@@ -156,6 +169,7 @@
         "effect_tl": "-30"
     },
     {
+        "id": 14,
         "name": "一盒包治百病的药",
         "price": "200",
         "image": "demo.png",
@@ -168,6 +182,7 @@
         "effect_tl": ""
     },
     {
+        "id": 15,
         "name": "一束鲜花",
         "price": "50",
         "image": "demo.png",
@@ -180,6 +195,7 @@
         "effect_tl": ""
     },
     {
+        "id": 16,
         "name": "游戏机（限量）",
         "price": "500",
         "image": "demo.png",
@@ -192,6 +208,7 @@
         "effect_tl": ""
     },
     {
+        "id": 17,
         "name": "九转还魂丹",
         "price": "999",
         "image": "demo.png",
@@ -204,6 +221,7 @@
         "effect_tl": ""
     },
     {
+        "id": 18,
         "name": "不死图腾",
         "price": "500",
         "image": "demo.png",
@@ -216,6 +234,7 @@
         "effect_tl": ""
     },
     {
+        "id": 19,
         "name": "大背包（限量）",
         "price": "200",
         "image": "demo.png",
@@ -228,6 +247,7 @@
         "effect_tl": ""
     },
     {
+        "id": 20,
         "name": "小瓶回血药剂",
         "price": "100",
         "image": "demo.png",
@@ -240,6 +260,7 @@
         "effect_tl": ""
     },
     {
+        "id": 21,
         "name": "大瓶回血药剂",
         "price": "200",
         "image": "demo.png",
