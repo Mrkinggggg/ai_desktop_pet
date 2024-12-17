@@ -13,12 +13,13 @@ from PyQt5.QtCore import (
 )
 from qfluentwidgets import (
     BodyLabel, PushButton, ListWidget, ComboBox, SpinBox, LineEdit, CheckBox, ImageLabel, Slider, Flyout,
-    FlyoutView, SearchLineEdit, ElevatedCardWidget, CardWidget, FlyoutViewBase, FlyoutAnimationType, PrimaryPushButton,
-    SwitchButton
+    SearchLineEdit, ElevatedCardWidget, CardWidget, FlyoutViewBase, FlyoutAnimationType, PrimaryPushButton,
+    SwitchButton, PipsPager, PipsScrollButtonDisplayMode,
 )
 import os
 import json
 from pypinyin import lazy_pinyin
+from scipy.stats import false_discovery_control
 
 
 def load_items_from_json(file_name):
@@ -49,8 +50,9 @@ class ItemWidget(ElevatedCardWidget):
 
     itemClicked = pyqtSignal(dict)
     buyClicked = pyqtSignal(dict)
-    def __init__(self, item, parent=None):
+    def __init__(self, item, width, height, parent=None):
         super().__init__(parent)
+        # self.setFixedSize(int(width / 4), int(height / 2.3))
         self.item = item
         self.radius = 15  # 圆角半径
         self.background_color = QColor("#f0f0f0")  # 初始背景颜色
@@ -147,7 +149,9 @@ class FailBuyFlyoutView(FlyoutViewBase):
         # failure_message.setIcon(QMessageBox.Warning)
         # failure_message.exec_()
 
-
+'''
+    万一以后用到了呢
+'''
 class SSpinBox(SpinBox):
     """自定义SpinBox类，实现按下键数字增大，按上键数字减小"""
     def stepUp(self):
@@ -178,7 +182,7 @@ class ShoppingApp(QWidget):
 
         self.items = load_items_from_json("items_list.json")
         self.items_per_page = 6  # 每页显示的商品数量
-        self.current_page = 1  # 当前页码
+        self.current_page = 0  # 当前页码
         self.current_category = "全部"  # 默认分类
         self.filtered_items = self.filter_items_by_category()  # 初始化商品列表
         self.total_pages = (len(self.items) + self.items_per_page - 1) // self.items_per_page
@@ -196,7 +200,7 @@ class ShoppingApp(QWidget):
 
         # 右侧分类和排序
         right_layout = QVBoxLayout()
-        right_layout.setContentsMargins(12, 24, 24, 24)
+        right_layout.setContentsMargins(12, 24, 12, 24)
         self.category_list = ListWidget()
         self.category_list.setObjectName('list')
         self.category_list.addItems(["全部", "正餐", "零食", "饮料", "药品", "礼物", "道具"])
@@ -252,21 +256,22 @@ class ShoppingApp(QWidget):
         # 商品网格
         self.grid_layout = QGridLayout()
         self.update_grid_layout()
-        left_layout.addLayout(top_layout,1)
-        left_layout.addLayout(self.grid_layout,15)
+        left_layout.addLayout(top_layout, 1)
+        left_layout.addLayout(self.grid_layout, 100)
 
         # 底部分页
         bottom_layout = QHBoxLayout()
         # 创建居中的子布局
         center_layout = QHBoxLayout()
-        self.page_selector = SSpinBox()
-        self.page_selector.setFocusPolicy(Qt.NoFocus)
-        self.page_selector.setRange(1, self.total_pages)
-        self.page_selector.setValue(self.current_page)
-        self.page_selector.valueChanged.connect(self.change_page)
+        self.fpage_selector = PipsPager(Qt.Horizontal)
+        self.fpage_selector.setPageNumber(self.total_pages)
+        self.fpage_selector.setVisibleNumber(self.total_pages)
+        self.fpage_selector.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
+        self.fpage_selector.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
+        self.fpage_selector.setCurrentIndex(self.current_page - 1)
+        self.fpage_selector.currentTextChanged.connect(lambda:self.change_page(self.fpage_selector.currentIndex()))
 
-        center_layout.addWidget(QLabel("页码"))
-        center_layout.addWidget(self.page_selector)
+        center_layout.addWidget(self.fpage_selector)
         center_layout.setAlignment(Qt.AlignCenter)
 
         # 将子布局添加到底部布局中
@@ -306,8 +311,9 @@ class ShoppingApp(QWidget):
             ]
         self.current_page = 1  # 搜索后重置为第一页
         self.total_pages = (len(self.filtered_items) + self.items_per_page - 1) // self.items_per_page
-        self.page_selector.setRange(1, self.total_pages)
-        self.page_selector.setValue(self.current_page)
+        self.fpage_selector.setVisibleNumber(self.total_pages)
+        self.fpage_selector.setPageNumber(self.total_pages)
+        self.fpage_selector.setCurrentIndex(self.current_page - 1)
         self.update_grid_layout()
 
     def sort_items(self):
@@ -315,7 +321,12 @@ class ShoppingApp(QWidget):
         sort_option = self.sort_combobox.currentText()
         is_descending = self.adbutton.isChecked()  # 检查是否选中降序
 
-        if sort_option == "按名字":
+        if sort_option == "默认顺序":
+            self.filtered_items.sort(
+                key=lambda item: item["id"],
+                reverse=False
+            )
+        elif sort_option == "按名字":
             # 按拼音排序
             self.filtered_items.sort(
                 key=lambda item: "".join(lazy_pinyin(item["name"])),
@@ -345,8 +356,9 @@ class ShoppingApp(QWidget):
         # 更新当前页面为第一页，并刷新网格布局
         self.current_page = 1
         self.total_pages = (len(self.filtered_items) + self.items_per_page - 1) // self.items_per_page
-        self.page_selector.setRange(1, self.total_pages)
-        self.page_selector.setValue(self.current_page)
+        self.fpage_selector.setVisibleNumber(self.total_pages)
+        self.fpage_selector.setPageNumber(self.total_pages)
+        self.fpage_selector.setCurrentIndex(self.current_page - 1)
         self.update_grid_layout()
 
     def filter_items_by_category(self):
@@ -362,7 +374,7 @@ class ShoppingApp(QWidget):
             self.grid_layout.itemAt(i).widget().deleteLater()
 
         # 计算当前页的商品索引范围
-        start_index = (self.current_page - 1) * self.items_per_page
+        start_index = (int(self.current_page)) * self.items_per_page
         end_index = min(start_index + self.items_per_page, len(self.filtered_items))
         page_items = self.filtered_items[start_index:end_index]
 
@@ -388,18 +400,20 @@ class ShoppingApp(QWidget):
         self.filtered_items = self.filter_items_by_category()
         self.current_page = 1  # 切换分类后重置为第一页
         self.total_pages = (len(self.filtered_items) + self.items_per_page - 1) // self.items_per_page
-        self.page_selector.setRange(1, self.total_pages)
-        self.page_selector.setValue(self.current_page)
+        self.fpage_selector.setVisibleNumber(self.total_pages)
+        self.fpage_selector.setPageNumber(self.total_pages)
+        self.fpage_selector.setCurrentIndex(self.current_page - 1)
         self.update_grid_layout()
 
-    def change_page(self, value):
+    def change_page(self, index):
         """处理页码改变事件"""
-        self.current_page = value
+        print(index)
+        self.current_page = index
         self.update_grid_layout()
 
     def create_item_widget(self, item):
         """创建单个商品的显示小组件"""
-        widget = ItemWidget(item)
+        widget = ItemWidget(item, self.window_width, self.window_height)
         widget.itemClicked.connect(self.show_item_details)  # 连接信号到槽
         widget.buyClicked.connect(self.show_purchase_widget)
         return widget
@@ -441,9 +455,9 @@ class ShoppingApp(QWidget):
         image_label.setPixmap(pixmap)
         layout.addWidget(image_label, alignment=Qt.AlignCenter)
 
-        name_label = QLabel(f"商品名称: {item['name']}")
+        name_label = QLabel(f"商品: {item['name']}")
         price_label = QLabel(f"价格: {item['price']}")
-        description_label = QLabel(f"描述: {item['describe']}")
+        description_label = QLabel(f"效果: {item['effect']}")
         layout.addWidget(name_label)
         layout.addWidget(price_label)
         layout.addWidget(description_label)
