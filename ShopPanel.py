@@ -19,7 +19,7 @@ from qfluentwidgets import (
 import os
 import json
 from pypinyin import lazy_pinyin
-from scipy.stats import false_discovery_control
+from datetime import datetime
 
 
 def load_items_from_json(file_name):
@@ -149,6 +149,24 @@ class FailBuyFlyoutView(FlyoutViewBase):
         # failure_message.setIcon(QMessageBox.Warning)
         # failure_message.exec_()
 
+
+class FailBuyFlyoutView_limited(FlyoutViewBase):
+    def __init__(self, parent_widget, window_width, window_height, item, value, parent=None):
+        super().__init__(parent=None)
+        total_price = int(item['price']) * value  # 计算总价
+        self.vBoxLayout = QVBoxLayout(self)
+        self.label = BodyLabel(
+            f"金币不足！\n需要: {total_price} 元\n当前余额: {parent_widget.balance} 元")
+        self.button = PrimaryPushButton("关闭")
+
+        self.button.setFixedWidth(140)
+
+        self.vBoxLayout.setSpacing(12)
+        self.vBoxLayout.setContentsMargins(20, 16, 20, 16)
+        self.vBoxLayout.addWidget(self.label, alignment=Qt.AlignCenter)
+        self.vBoxLayout.addWidget(self.button, alignment=Qt.AlignCenter)
+
+
 '''
     万一以后用到了呢
 '''
@@ -187,6 +205,8 @@ class ShoppingApp(QWidget):
         self.filtered_items = self.filter_items_by_category()  # 初始化商品列表
         self.total_pages = (len(self.items) + self.items_per_page - 1) // self.items_per_page
         self.user_data = load_items_from_json("user_data.json")
+        self.buy_history = load_items_from_json("purchase_history.json")
+        self.limited_history = load_items_from_json("limited_history.json")
         self.balance = self.user_data["balance"]
         self.components = []
 
@@ -294,9 +314,16 @@ class ShoppingApp(QWidget):
         self.balance_label.setText(f"金币:{self.balance:.2f}")
 
     def save_user_data(self):
-        """将用户数据保存回 JSON 文件"""
         with open("user_data.json", 'w', encoding='utf-8') as file:
             json.dump(self.user_data, file, ensure_ascii=False, indent=4)
+
+    def save_purchse_history_data(self):
+        with open("purchase_history.json", 'w', encoding='utf-8') as file:
+            json.dump(self.buy_history, file, ensure_ascii=False, indent=4)
+
+    def save_limited_history_data(self):
+        with open("limited_history.json", 'w', encoding='utf-8') as file:
+            json.dump(self.limited_history, file, ensure_ascii=False, indent=4)
 
     def perform_search(self):
         """根据搜索框的输入过滤商品"""
@@ -676,6 +703,36 @@ class ShoppingApp(QWidget):
 
     def confirm_purchase(self, item, value):
         """处理购买确认逻辑"""
+        # 获取当前时间信息
+        now = datetime.now()
+        year = now.year
+        week_number = now.isocalendar().week
+        weekday = now.isoweekday()  # 获取当前星期几，1-7 表示周一到周日
+
+        # 检查是否在限购日期范围
+        limited_days = item.get("limited_day", [-1, -1])  # 默认不限购日
+        if not (limited_days[0] <= weekday <= limited_days[1]):
+            # 不在可购买的日期范围内
+            Flyout.make(FailBuyFlyoutView_limited(self, self.window_width, self.window_height, item, value, "非限购日"),
+                        self.details_widget, self.details_widget, aniType=FlyoutAnimationType.PULL_UP)
+            return
+
+        # 检查本周已购买数量
+        weekly_purchase_count = 0
+        if item["limited"] > 0:  # 限购数量大于 0
+            for record in self.limited_history:
+                if (record["purchase_info"] == item["id"] and
+                        record["purchase_day"][0] == year and
+                        record["purchase_day"][1] == week_number):
+                    weekly_purchase_count += record["quantity"]
+
+            if weekly_purchase_count + value > item["limited"]:
+                # 超过限购数量
+                Flyout.make(
+                    FailBuyFlyoutView_limited(self, self.window_width, self.window_height, item, value, "超过限购数量"),
+                    self.details_widget, self.details_widget, aniType=FlyoutAnimationType.PULL_UP)
+                return
+
         total_price = int(item['price']) * value  # 计算总价
 
         if self.balance >= total_price:
@@ -698,9 +755,29 @@ class ShoppingApp(QWidget):
                 "total_price": total_price
             }
 
-            self.user_data["purchase_history"].append(new_record)
+            if item["limited"] > 0:
+                # 获取当前时间信息
+                now = datetime.now()
+                year = now.year
+                # 计算当前日期为今年的第几周和星期几（星期一为0，星期日为6）
+                week_number = now.isocalendar().week
+                weekday = now.isoweekday()  # `isoweekday`返回1-7，表示周一到周日
+
+                new_limited_record = {
+                    "purchase_info": item["id"],
+                    "purchase_time": now.strftime("%Y-%m-%d %H:%M:%S"),  # 格式化为年月日时分秒
+                    "purchase_day": [year, week_number, weekday]
+                }
+                self.limited_history.append(new_limited_record)
+
+            self.buy_history.append(new_record)
+
+            self.buy_history.append(new_record)
+
 
             self.save_user_data()
+            self.save_purchse_history_data()
+            self.save_limited_history_data()
             Flyout.make(SuccessBuyFlyoutView(self, self.window_width, self.window_height, item, value),
                         self.details_widget, self.details_widget, aniType=FlyoutAnimationType.PULL_UP)
 
